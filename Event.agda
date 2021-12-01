@@ -21,7 +21,7 @@ private
 data Event : Pid → Set where
   init : Event p
   send : Event p → Event p
-  recv : Event p → Event q → Event p
+  recv : Event q → Event p → Event p
 
 private
   variable
@@ -30,9 +30,9 @@ private
     e″ : Event p″
 
 data _≺_ : Event p → Event q → Set where
-  processOrder₁ : e  ≺ send e
-  processOrder₂ : e  ≺ recv e e′
-  send≺receive  : e′ ≺ recv e e′
+  processOrder₁ : e ≺ send e
+  processOrder₂ : e ≺ recv e  e′
+  send≺receive  : e ≺ recv e′ e
   trans         : e ≺ e′ → e′ ≺ e″ → e ≺ e″
 
 data _≼_ : Event p → Event q → Set where
@@ -107,8 +107,8 @@ data _∈_ : Event p → History q → Set where
 ≼→∈ refl     = here
 ≼→∈ (lift x) = ≺→∈ x
   where
-    ≺→∈ : e ≺ e′ → e ∈ e′
-    ≺→∈ processOrder₁ = there₁ here
-    ≺→∈ processOrder₂ = there₃ here
-    ≺→∈ send≺receive = there₂ here
-    ≺→∈ (trans x y) = ∈-transitive (≺→∈ x) (≺→∈ y)
+  ≺→∈ : e ≺ e′ → e ∈ e′
+  ≺→∈ processOrder₁ = there₁ here
+  ≺→∈ processOrder₂ = there₃ here
+  ≺→∈ send≺receive = there₂ here
+  ≺→∈ (trans x y) = ∈-transitive (≺→∈ x) (≺→∈ y)
