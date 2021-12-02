@@ -31,8 +31,8 @@ private
 
 data _≺_ : Event p → Event q → Set where
   processOrder₁ : e ≺ send e
-  processOrder₂ : e ≺ recv e  e′
-  send≺receive  : e ≺ recv e′ e
+  processOrder₂ : e ≺ recv e′ e
+  send≺recv     : e ≺ recv e  e′
   trans         : e ≺ e′ → e′ ≺ e″ → e ≺ e″
 
 data _≼_ : Event p → Event q → Set where
@@ -47,14 +47,14 @@ size init        = zero
 size (send e)    = suc (size e)
 size (recv e e′) = suc (size e + size e′)
 
-≺-mono : e ≺ e′ → size e < size e′
-≺-mono processOrder₁ = s≤s ≤-refl
-≺-mono processOrder₂ = s≤s (≤-stepsʳ _ ≤-refl)
-≺-mono send≺receive  = s≤s (≤-stepsˡ _ ≤-refl)
-≺-mono (trans x y)   = ≤-trans (≺-mono x) (<⇒≤ (≺-mono y))
+≺-monotonic : e ≺ e′ → size e < size e′
+≺-monotonic processOrder₁ = s≤s ≤-refl
+≺-monotonic processOrder₂ = s≤s (≤-stepsˡ _ ≤-refl)
+≺-monotonic send≺recv     = s≤s (≤-stepsʳ _ ≤-refl)
+≺-monotonic (trans x y)   = ≤-trans (≺-monotonic x) (<⇒≤ (≺-monotonic y))
 
 ≺-irreflexive : ¬ e ≺ e
-≺-irreflexive x = 1+n≰n (≺-mono x)
+≺-irreflexive x = 1+n≰n (≺-monotonic x)
 
 ≺-transitive : e ≺ e′ → e′ ≺ e″ → e ≺ e″
 ≺-transitive = trans
@@ -82,11 +82,11 @@ data _⊆_ : History p → History q → Set where
 ... | refl     = lift processOrder₁
 ... | lift y   = lift (trans y processOrder₁)
 ⊆→≼ (there₂ x) with ⊆→≼ x
-... | refl     = lift send≺receive
-... | lift y   = lift (trans y send≺receive)
-⊆→≼ (there₃ x) with ⊆→≼ x
 ... | refl     = lift processOrder₂
 ... | lift y   = lift (trans y processOrder₂)
+⊆→≼ (there₃ x) with ⊆→≼ x
+... | refl     = lift send≺recv
+... | lift y   = lift (trans y send≺recv)
 
 ⊆-transitive : e ⊆ e′ → e′ ⊆ e″ → e ⊆ e″
 ⊆-transitive here       y          = y
@@ -109,9 +109,9 @@ data _⊆_ : History p → History q → Set where
   where
   ≺→⊆ : e ≺ e′ → e ⊆ e′
   ≺→⊆ processOrder₁ = there₁ here
-  ≺→⊆ processOrder₂ = there₃ here
-  ≺→⊆ send≺receive = there₂ here
-  ≺→⊆ (trans x y) = ⊆-transitive (≺→⊆ x) (≺→⊆ y)
+  ≺→⊆ processOrder₂ = there₂ here
+  ≺→⊆ send≺recv     = there₃ here
+  ≺→⊆ (trans x y)   = ⊆-transitive (≺→⊆ x) (≺→⊆ y)
 
 data _∈_ : Event p → History p → Set where
   here   : e ∈ e

@@ -2,14 +2,18 @@
 -- Defines the execution of a distributed system as a transition system.
 ------------------------------------------------------------------------
 
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_)
-open import Relation.Nullary using (Dec; yes; no)
+open import Level using (0ℓ)
+open import Relation.Binary using (DecSetoid)
 
-module Execution (Pid : Set) (_≟_ : (p : Pid) → (q : Pid) → Dec (p ≡ q)) where
+module Execution (PidSetoid : DecSetoid 0ℓ 0ℓ) where
+
+open DecSetoid PidSetoid using (_≟_) renaming (Carrier to Pid)
 
 open import Data.Product using (∃; _,_; ∃-syntax; -,_)
 open import Event Pid
 open import Function using (_∘₂_)
+open import Relation.Nullary using (yes; no)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 
 -- The state of a ditributed system is a map from process id to its history.
 State : Set
@@ -23,19 +27,23 @@ update s p f p′ with p ≟ p′
 ... | yes _ = f (s p′)
 ... | no  _ = s p′
 
+private
+  variable
+    s s′ s″ : State
+
 data _==>_ : State → State → Set where
-  send : ∀ p s →
+  send : ∀ p →
          s ==> update s p send
-  recv : ∀ p p′ (e : Event p′) e′ s →
+  recv : ∀ p p′ (e : Event p′) →
          p ≢ p′ →
-         e ≡ send e′ →
+         ∃[ e′ ] e ≡ send e′ →
          e ∈ s p′ →
          s ==> update s p (recv e)
 
 data _==>*_ : State → State → Set where
-  lift  : ∀ {s s′}    → s ==> s′ → s ==>* s′
-  refl  : ∀ {s}       → s ==>* s
-  trans : ∀ {s s′ s″} → s ==>* s′ → s′ ==>* s″ → s ==>* s″
+  lift  : s ==> s′ → s ==>* s′
+  refl  : s ==>* s
+  trans : s ==>* s′ → s′ ==>* s″ → s ==>* s″
 
 reachable : State → Set
 reachable = s₀ ==>*_
@@ -78,10 +86,10 @@ wf-recv = induction P P₀ Pstep
   P₀ p q e e′ ()
 
   Pstep : ∀ s s′ → P s → s ==> s′ → P s′
-  Pstep _ _ Ps (send p _) q _ _ _ x          with p ≟ q
-  Pstep _ _ Ps (send p _) q _ _ _ (there₁ x) | yes _ = Ps _ _ _ _ x
-  Pstep _ _ Ps (send p _) q _ _ _ x          | no  _ = Ps _ _ _ _ x
-  Pstep _ _ Ps (recv p _ _ _ _ _ _ _) q _ _ _ x          with p ≟ q
-  Pstep _ _ Ps (recv p _ _ _ _ _ y _) q _ _ _ here       | yes _ = -, y
-  Pstep _ _ Ps (recv p _ _ _ _ _ _ _) q _ _ _ (there₂ x) | yes _ = Ps _ _ _ _ x
-  Pstep _ _ Ps (recv p _ _ _ _ _ _ _) q _ _ _ x          | no  _ = Ps _ _ _ _ x
+  Pstep _ _ Ps (send p) q _ _ _ x          with p ≟ q
+  Pstep _ _ Ps (send p) q _ _ _ (there₁ x) | yes _ = Ps _ _ _ _ x
+  Pstep _ _ Ps (send p) q _ _ _ x          | no  _ = Ps _ _ _ _ x
+  Pstep _ _ Ps (recv p _ _ _ _ _) q _ _ _ x          with p ≟ q
+  Pstep _ _ Ps (recv p _ _ _ y _) q _ _ _ here       | yes _ = y
+  Pstep _ _ Ps (recv p _ _ _ _ _) q _ _ _ (there₂ x) | yes _ = Ps _ _ _ _ x
+  Pstep _ _ Ps (recv p _ _ _ _ _) q _ _ _ x          | no  _ = Ps _ _ _ _ x
