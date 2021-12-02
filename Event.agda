@@ -2,8 +2,8 @@
 -- Defines `Event` and happens-before relation `_≺_`, proves `_≺_` is a
 -- strict partial order.
 --
--- Also defines (causal) `History` and in-history relation `_∈_`, proves
--- `_∈_` is isomorphic to `_≼_` (the reflexive closure of `_≺_`).
+-- Also defines (causal) `History` and sub-history relation `_⊆_`, proves
+-- `_⊆_` is isomorphic to `_≼_` (the reflexive closure of `_≺_`).
 ------------------------------------------------------------------------
 
 module Event (Pid : Set) where
@@ -70,45 +70,50 @@ size (recv e e′) = suc (size e + size e′)
 
 History = Event
 
-data _∈_ : Event p → History q → Set where
-  here   : e ∈ e
-  there₁ : e ∈ e′ → e ∈ send e′
-  there₂ : e ∈ e′ → e ∈ recv e″ e′
-  there₃ : e ∈ e″ → e ∈ recv e″ e′
+data _⊆_ : History p → History q → Set where
+  here   : e ⊆ e
+  there₁ : e ⊆ e′ → e ⊆ send e′
+  there₂ : e ⊆ e′ → e ⊆ recv e″ e′
+  there₃ : e ⊆ e″ → e ⊆ recv e″ e′
 
-∈→≼ : e ∈ e′ → e ≼ e′
-∈→≼ here       = refl
-∈→≼ (there₁ x) with ∈→≼ x
+⊆→≼ : e ⊆ e′ → e ≼ e′
+⊆→≼ here       = refl
+⊆→≼ (there₁ x) with ⊆→≼ x
 ... | refl     = lift processOrder₁
 ... | lift y   = lift (trans y processOrder₁)
-∈→≼ (there₂ x) with ∈→≼ x
+⊆→≼ (there₂ x) with ⊆→≼ x
 ... | refl     = lift send≺receive
 ... | lift y   = lift (trans y send≺receive)
-∈→≼ (there₃ x) with ∈→≼ x
+⊆→≼ (there₃ x) with ⊆→≼ x
 ... | refl     = lift processOrder₂
 ... | lift y   = lift (trans y processOrder₂)
 
-∈-transitive : e ∈ e′ → e′ ∈ e″ → e ∈ e″
-∈-transitive here       y          = y
-∈-transitive (there₁ x) here       = there₁ x
-∈-transitive (there₁ x) (there₁ y) = there₁ (∈-transitive x (∈-transitive (there₁ here) y))
-∈-transitive (there₁ x) (there₂ y) = there₂ (∈-transitive x (∈-transitive (there₁ here) y))
-∈-transitive (there₁ x) (there₃ y) = there₃ (∈-transitive x (∈-transitive (there₁ here) y))
-∈-transitive (there₂ x) here       = there₂ x
-∈-transitive (there₂ x) (there₁ y) = there₁ (∈-transitive x (∈-transitive (there₂ here) y))
-∈-transitive (there₂ x) (there₂ y) = there₂ (∈-transitive x (∈-transitive (there₂ here) y))
-∈-transitive (there₂ x) (there₃ y) = there₃ (∈-transitive x (∈-transitive (there₂ here) y))
-∈-transitive (there₃ x) here       = there₃ x
-∈-transitive (there₃ x) (there₁ y) = there₁ (∈-transitive x (∈-transitive (there₃ here) y))
-∈-transitive (there₃ x) (there₂ y) = there₂ (∈-transitive x (∈-transitive (there₃ here) y))
-∈-transitive (there₃ x) (there₃ y) = there₃ (∈-transitive x (∈-transitive (there₃ here) y))
+⊆-transitive : e ⊆ e′ → e′ ⊆ e″ → e ⊆ e″
+⊆-transitive here       y          = y
+⊆-transitive (there₁ x) here       = there₁ x
+⊆-transitive (there₁ x) (there₁ y) = there₁ (⊆-transitive x (⊆-transitive (there₁ here) y))
+⊆-transitive (there₁ x) (there₂ y) = there₂ (⊆-transitive x (⊆-transitive (there₁ here) y))
+⊆-transitive (there₁ x) (there₃ y) = there₃ (⊆-transitive x (⊆-transitive (there₁ here) y))
+⊆-transitive (there₂ x) here       = there₂ x
+⊆-transitive (there₂ x) (there₁ y) = there₁ (⊆-transitive x (⊆-transitive (there₂ here) y))
+⊆-transitive (there₂ x) (there₂ y) = there₂ (⊆-transitive x (⊆-transitive (there₂ here) y))
+⊆-transitive (there₂ x) (there₃ y) = there₃ (⊆-transitive x (⊆-transitive (there₂ here) y))
+⊆-transitive (there₃ x) here       = there₃ x
+⊆-transitive (there₃ x) (there₁ y) = there₁ (⊆-transitive x (⊆-transitive (there₃ here) y))
+⊆-transitive (there₃ x) (there₂ y) = there₂ (⊆-transitive x (⊆-transitive (there₃ here) y))
+⊆-transitive (there₃ x) (there₃ y) = there₃ (⊆-transitive x (⊆-transitive (there₃ here) y))
 
-≼→∈ : e ≼ e′ → e ∈ e′
-≼→∈ refl     = here
-≼→∈ (lift x) = ≺→∈ x
+≼→⊆ : e ≼ e′ → e ⊆ e′
+≼→⊆ refl     = here
+≼→⊆ (lift x) = ≺→⊆ x
   where
-  ≺→∈ : e ≺ e′ → e ∈ e′
-  ≺→∈ processOrder₁ = there₁ here
-  ≺→∈ processOrder₂ = there₃ here
-  ≺→∈ send≺receive = there₂ here
-  ≺→∈ (trans x y) = ∈-transitive (≺→∈ x) (≺→∈ y)
+  ≺→⊆ : e ≺ e′ → e ⊆ e′
+  ≺→⊆ processOrder₁ = there₁ here
+  ≺→⊆ processOrder₂ = there₃ here
+  ≺→⊆ send≺receive = there₂ here
+  ≺→⊆ (trans x y) = ⊆-transitive (≺→⊆ x) (≺→⊆ y)
+
+data _∈_ : Event p → History p → Set where
+  here   : e ∈ e
+  there₁ : e ∈ e′ → e ∈ send e′
+  there₂ : e ∈ e′ → e ∈ recv e″ e′
