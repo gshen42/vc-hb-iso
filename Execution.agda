@@ -2,12 +2,12 @@
 -- Defines the execution of a distributed system as a transition system.
 ------------------------------------------------------------------------
 
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_)
 open import Relation.Nullary using (Dec; yes; no)
 
 module Execution (Pid : Set) (_≟_ : (p : Pid) → (q : Pid) → Dec (p ≡ q)) where
 
-open import Data.Product using (∃; _,_; ∃-syntax)
+open import Data.Product using (∃; _,_; ∃-syntax; -,_)
 open import Event Pid
 open import Function using (_∘₂_)
 
@@ -15,8 +15,8 @@ open import Function using (_∘₂_)
 State : Set
 State = (p : Pid) → History p
 
-state₀ : State
-state₀ p = init
+s₀ : State
+s₀ p = init
 
 update : State → Pid → (∀ {p} → History p → History p) → State
 update s p f p′ with p ≟ p′
@@ -32,45 +32,56 @@ data _==>_ : State → State → Set where
          e ∈ s p′ →
          s ==> update s p (recv e)
 
-private
-  variable
-    p p′    : Pid
-    e       : Event p
-    e′      : Event p′
-    s s′ s″ : State
-
 data _==>*_ : State → State → Set where
-  lift  : s ==> s′ → s ==>* s′
-  refl  : s ==>* s
-  trans : s ==>* s′ → s′ ==>* s″ → s ==>* s″
+  lift  : ∀ {s s′}    → s ==> s′ → s ==>* s′
+  refl  : ∀ {s}       → s ==>* s
+  trans : ∀ {s s′ s″} → s ==>* s′ → s′ ==>* s″ → s ==>* s″
 
 reachable : State → Set
-reachable = state₀ ==>*_
+reachable = s₀ ==>*_
 
 -- Induction principle for `reachable`.
 induction : ∀ (P : State → Set) →
-            P state₀ →
+            P s₀ →
             (∀ s s′ → P s → s ==> s′ → P s′) →
             ∀ s → reachable s → P s
 induction _ P₀ Pstep _ (lift x)    = Pstep _ _ P₀ x
 induction _ P₀ Pstep _ refl        = P₀
-induction _ P₀ Pstep _ (trans x y) = helper _ Pstep _ _ P₀ (trans x y)
+induction _ P₀ Pstep _ (trans x y) = Pstep→Psteps _ Pstep _ _ P₀ (trans x y)
   where
-  helper : ∀ (P : State → Set) →
-           (∀ s s′ → P s → s ==>  s′ → P s′) →
-           (∀ s s′ → P s → s ==>* s′ → P s′)
-  helper _ Pstep _ _ Ps (lift x)    = Pstep _ _ Ps x
-  helper _ Pstep _ _ Ps refl        = Ps
-  helper _ Pstep _ _ Ps (trans x y) = helper _ Pstep _ _ (helper _ Pstep _ _ Ps x) y
+  Pstep→Psteps : ∀ (P : State → Set) →
+               (∀ s s′ → P s → s ==>  s′ → P s′) →
+               (∀ s s′ → P s → s ==>* s′ → P s′)
+  Pstep→Psteps _ Pstep _ _ Ps (lift x)    = Pstep _ _ Ps x
+  Pstep→Psteps _ Pstep _ _ Ps refl        = Ps
+  Pstep→Psteps _ Pstep _ _ Ps (trans x y) = Pstep→Psteps _ Pstep _ _ (Pstep→Psteps _ Pstep _ _ Ps x) y
 
 -- Induction principle for `reachable` with a generalized induction hypothesis.
 induction⁺ : ∀ (P Q : State → Set) →
-            Q state₀ →
+            Q s₀ →
             (∀ s s′ → Q s → s ==> s′ → Q s′) →
             (∀ s → Q s → P s) →
             ∀ s → reachable s → P s
 induction⁺ P Q Q₀ Qstep Q→P = (Q→P _) ∘₂ induction Q Q₀ Qstep
 
--- wf-recv : reachable s →
---           recv e e′ ∈ s p →
---           ∃[ e″ ] e ≡ send e″
+-- Receives are well-formed, i.e., the last event of the sending process is a send event.
+wf-recv : ∀ s → reachable s →
+          ∀ p q (e : Event p) (e′ : Event q) →
+          recv e′ e ∈ s p →
+          ∃[ e″ ] e′ ≡ send e″
+wf-recv = induction P P₀ Pstep
+  where
+  P : State → Set
+  P s = ∀ p q e e′ → recv e′ e ∈ s p → ∃[ e″ ] e′ ≡ send e″
+
+  P₀ : P s₀
+  P₀ p q e e′ ()
+
+  Pstep : ∀ s s′ → P s → s ==> s′ → P s′
+  Pstep _ _ Ps (send p _) q _ _ _ x          with p ≟ q
+  Pstep _ _ Ps (send p _) q _ _ _ (there₁ x) | yes _ = Ps _ _ _ _ x
+  Pstep _ _ Ps (send p _) q _ _ _ x          | no  _ = Ps _ _ _ _ x
+  Pstep _ _ Ps (recv p _ _ _ _ _ _ _) q _ _ _ x          with p ≟ q
+  Pstep _ _ Ps (recv p _ _ _ _ _ y _) q _ _ _ here       | yes _ = -, y
+  Pstep _ _ Ps (recv p _ _ _ _ _ _ _) q _ _ _ (there₂ x) | yes _ = Ps _ _ _ _ x
+  Pstep _ _ Ps (recv p _ _ _ _ _ _ _) q _ _ _ x          | no  _ = Ps _ _ _ _ x
