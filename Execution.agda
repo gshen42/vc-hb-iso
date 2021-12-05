@@ -53,9 +53,7 @@ induction : ∀ (P : State → Set) →
             P s₀ →
             (∀ s s′ → P s → s ==> s′ → P s′) →
             ∀ s → reachable s → P s
-induction _ P₀ Pstep _ (lift x)    = Pstep _ _ P₀ x
-induction _ P₀ Pstep _ refl        = P₀
-induction _ P₀ Pstep _ (trans x y) = Pstep→Psteps _ Pstep _ _ P₀ (trans x y)
+induction _ P₀ Pstep _ x = Pstep→Psteps _ Pstep _ _ P₀ x
   where
   Pstep→Psteps : ∀ (P : State → Set) →
                (∀ s s′ → P s → s ==>  s′ → P s′) →
