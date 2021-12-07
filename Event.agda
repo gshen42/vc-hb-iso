@@ -6,22 +6,26 @@
 -- `_⊆_` is isomorphic to `_≼_` (the reflexive closure of `_≺_`).
 ------------------------------------------------------------------------
 
-module Event (Pid : Set) where
+open import Data.Nat as ℕ
+
+module Event (n : ℕ) where
 
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Nat as ℕ
+open import Data.Fin using (Fin)
 open import Data.Nat.Properties as ℕₚ
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (¬_)
 
+Pid = Fin n
+
 private
   variable
-    p p′ p″ q : Pid
+    p p′ p″ : Pid
 
 data Event : Pid → Set where
   init : Event p
-  send : Event p → Event p
-  recv : Event q → Event p → Event p
+  send : Event p  → Event p
+  recv : Event p′ → Event p → Event p
 
 private
   variable
@@ -29,13 +33,13 @@ private
     e′ : Event p′
     e″ : Event p″
 
-data _≺_ : Event p → Event q → Set where
+data _≺_ : Event p → Event p′ → Set where
   processOrder₁ : e ≺ send e
   processOrder₂ : e ≺ recv e′ e
   send≺recv     : e ≺ recv e  e′
   trans         : e ≺ e′ → e′ ≺ e″ → e ≺ e″
 
-data _≼_ : Event p → Event q → Set where
+data _≼_ : Event p → Event p′ → Set where
   refl : e ≼ e
   lift : e ≺ e′ → e ≼ e′
 
@@ -70,7 +74,7 @@ size (recv e e′) = suc (size e + size e′)
 
 History = Event
 
-data _⊆_ : History p → History q → Set where
+data _⊆_ : History p → History p′ → Set where
   here   : e ⊆ e
   there₁ : e ⊆ e′ → e ⊆ send e′
   there₂ : e ⊆ e′ → e ⊆ recv e″ e′
@@ -112,8 +116,3 @@ data _⊆_ : History p → History q → Set where
   ≺→⊆ processOrder₂ = there₂ here
   ≺→⊆ send≺recv     = there₃ here
   ≺→⊆ (trans x y)   = ⊆-transitive (≺→⊆ x) (≺→⊆ y)
-
-data _∈_ : Event p → History p → Set where
-  here   : e ∈ e
-  there₁ : e ∈ e′ → e ∈ send e′
-  there₂ : e ∈ e′ → e ∈ recv e″ e′

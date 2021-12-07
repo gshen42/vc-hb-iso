@@ -4,26 +4,24 @@
 -- representation.
 ------------------------------------------------------------------------
 
-open import Level using (0ℓ)
-open import Relation.Binary using (DecSetoid)
+open import Data.Nat using (ℕ)
 
-module AbstractVectorClock (PidSetoid : DecSetoid 0ℓ 0ℓ) where
+module AbstractVectorClock (n : ℕ) where
 
-open DecSetoid PidSetoid using (_≟_) renaming (Carrier to Pid)
-
+open import Data.Fin using (Fin)
 open import Data.Product using (_×_; _,_)
-open import Event Pid
-open import Execution PidSetoid
+open import Event n
+open import Execution n
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
 
 private
   variable
-    p p′ p″ q : Pid
+    p p′ p″ : Pid
 
 data VC : Pid → Set where
   init  : VC p
-  tick  : VC p → VC p
-  merge : VC q → VC p → VC p
+  tick  : VC p  → VC p
+  merge : VC p′ → VC p → VC p
 
 private
   variable
@@ -31,7 +29,7 @@ private
     vc′ : VC p′
     vc″ : VC p″
 
-data _<_ : VC p → VC q → Set where
+data _<_ : VC p → VC p′ → Set where
   vc<tick[vc]      : vc < tick vc
   vc<merge[vc,vc′] : vc < merge vc  vc′
   vc<merge[vc′,vc] : vc < merge vc′ vc
@@ -52,10 +50,8 @@ private
     e   : Event p
     e′  : Event p′
 
-<↔≺ : ∀ s → reachable s →
-      e ∈ s p → e′ ∈ s p′ →
-      (e ≺ e′ → vc[ e ] < vc[ e′ ]) × (vc[ e ] < vc[ e′ ] → e ≺ e′)
-<↔≺ _ _ _ _ = ≺→< , <→≺
+<↔≺ : (e ≺ e′ → vc[ e ] < vc[ e′ ]) × (vc[ e ] < vc[ e′ ] → e ≺ e′)
+<↔≺ = ≺→< , <→≺
   where
   event∘vc : ∀ (e : Event p) → event[ vc[ e ] ] ≡ e
   event∘vc init = refl
