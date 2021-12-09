@@ -17,24 +17,26 @@ open import Function using (_∘_)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_)
 
--- The state of a ditributed system is a map from process id to its history.
+-- The state of a process is a non-empty list of events that happened on
+-- it in order from most recent to oldest.
+Process : Pid → Set
+Process p = List⁺ (Event p)
+
+-- The state of a ditributed system is a map from process id to process
+-- state.
 State : Set
-State = (p : Pid) → List⁺ (Event p)
+State = (p : Pid) → Process p
 
 s₀ : State
 s₀ _ = [ init ]
 
 update : State → Pid → (∀ {p} → Event p → Event p) → State
 update s p f p′ with p ≟ p′
-... | yes _ = let e = head (s p′) in f e ∷⁺ s p′
+... | yes _ = f (head (s p′)) ∷⁺ s p′
 ... | no  _ = s p′
-
-infix 4 _∈_
 
 _∈_ : ∀ {A : Set} → A → List⁺ A → Set
 x ∈ xs = x ∈′ (toList xs)
-
-infix 4 _—⟶_
 
 data _—⟶_ : State → State → Set where
   send : ∀ {s} p →
@@ -45,28 +47,10 @@ data _—⟶_ : State → State → Set where
          e ∈ s p′ →
          s —⟶ update s p (recv e)
 
-infix 2 _—⟶*_
-
 data _—⟶*_ : State → State → Set where
   lift : ∀ {s s′} → s —⟶ s′ → s —⟶* s′
   refl : ∀ {s} → s —⟶* s
   tran : ∀ {s s′ s″} → s —⟶* s′ → s′ —⟶* s″ → s —⟶* s″
-
-module —⟶-Reasoning where
-
-  infix  1 begin_
-  infixr 2 _—⟶⟨_⟩_
-  infix  3 _∎
-
-  begin_ : ∀ {s s′} → s —⟶ s′ → s —⟶ s′
-  begin_ x = x
-
-  _—⟶⟨_⟩_ : ∀ s {s′ s″} → s —⟶ s′ → s′ —⟶* s″ → s —⟶* s″
-  _—⟶⟨_⟩_ _ = tran ∘ lift
-
-  _∎ : ∀ s → s —⟶* s
-  _∎ _ = refl
-
 
 reachable : State → Set
 reachable = s₀ —⟶*_
@@ -91,20 +75,6 @@ induction⁺ : ∀ (P Q : State → Set) →
             (∀ s → Q s → P s) →
             ∀ {s} → reachable s → P s
 induction⁺ P Q Q₀ Qstep Q→P = (Q→P _) ∘ induction Q Q₀ Qstep
-
--- Induction principle for reachable executions.
-induction⋆ : ∀ (P : ∀ s → reachable s → Set) →
-             P s₀ refl →
-             (∀ s s′ x x′ → P s x → s —⟶ s′ → P s′ x′) →
-             (∀ s x x′ → P s x ≡ P s x′) →
-             ∀ s (x : reachable s) → P s x
-induction⋆ P P₀ Pstep P≡ s x = Pstep→Psteps Pstep _ _ _ _ P₀ x
-  where
-  Pstep→Psteps : (∀ s s′ x x′ → P s x → s —⟶ s′ → P s′ x′) →
-                 ∀ s s′ x x′ → P s x → s —⟶* s′ → P s′ x′
-  Pstep→Psteps Pstep _ _ _ _  Px (lift a) = Pstep _ _ _ _ Px a
-  Pstep→Psteps Pstep _ _ x x′ Px refl rewrite P≡ _ x x′ = Px
-  Pstep→Psteps Pstep _ _ x _  Px (tran a b) = Pstep→Psteps Pstep _ _ (tran x a) _ (Pstep→Psteps Pstep _ _ _ _ Px a) b
 
 -- Receives are well-formed, i.e., the last event of the sending process is a send event.
 wf-recv : ∀ {s} → reachable s →
