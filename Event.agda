@@ -1,9 +1,9 @@
 ------------------------------------------------------------------------
--- Defines `Event` and happens-before relation `_≺_`, proves `_≺_` is a
+-- Defines `Event` and happens-before relation `_⊏_`, proves `_⊏_` is a
 -- strict partial order.
 --
 -- Also defines (causal) `History` and sub-history relation `_⊆_`, proves
--- `_⊆_` is isomorphic to `_≼_` (the reflexive closure of `_≺_`).
+-- `_⊆_` is isomorphic to `_⊑_` (the reflexive closure of `_⊏_`).
 ------------------------------------------------------------------------
 
 open import Data.Nat as ℕ
@@ -33,41 +33,41 @@ private
     e′ : Event p′
     e″ : Event p″
 
-data _≺_ : Event p → Event p′ → Set where
-  processOrder₁ : e ≺ send e
-  processOrder₂ : e ≺ recv e′ e
-  send≺recv     : e ≺ recv e  e′
-  trans         : e ≺ e′ → e′ ≺ e″ → e ≺ e″
+data _⊏_ : Event p → Event p′ → Set where
+  processOrder₁ : e ⊏ send e
+  processOrder₂ : e ⊏ recv e′ e
+  send⊏recv     : e ⊏ recv e  e′
+  trans         : e ⊏ e′ → e′ ⊏ e″ → e ⊏ e″
 
-data _≼_ : Event p → Event p′ → Set where
-  refl : e ≼ e
-  lift : e ≺ e′ → e ≼ e′
+data _⊑_ : Event p → Event p′ → Set where
+  refl : e ⊑ e
+  lift : e ⊏ e′ → e ⊑ e′
 
 ------------------------------------------------------------------------
--- `_≺_` is a strict partial order.
+-- `_⊏_` is a strict partial order.
 
 size : Event p → ℕ
 size init        = zero
 size (send e)    = suc (size e)
 size (recv e e′) = suc (size e + size e′)
 
-≺-monotonic : e ≺ e′ → size e < size e′
-≺-monotonic processOrder₁ = s≤s ≤-refl
-≺-monotonic processOrder₂ = s≤s (≤-stepsˡ _ ≤-refl)
-≺-monotonic send≺recv     = s≤s (≤-stepsʳ _ ≤-refl)
-≺-monotonic (trans x y)   = ≤-trans (≺-monotonic x) (<⇒≤ (≺-monotonic y))
+⊏-monotonic : e ⊏ e′ → size e < size e′
+⊏-monotonic processOrder₁ = s≤s ≤-refl
+⊏-monotonic processOrder₂ = s≤s (≤-stepsˡ _ ≤-refl)
+⊏-monotonic send⊏recv     = s≤s (≤-stepsʳ _ ≤-refl)
+⊏-monotonic (trans x y)   = ≤-trans (⊏-monotonic x) (<⇒≤ (⊏-monotonic y))
 
-≺-irreflexive : ¬ e ≺ e
-≺-irreflexive x = 1+n≰n (≺-monotonic x)
+⊏-irreflexive : ¬ e ⊏ e
+⊏-irreflexive x = 1+n≰n (⊏-monotonic x)
 
-≺-transitive : e ≺ e′ → e′ ≺ e″ → e ≺ e″
-≺-transitive = trans
+⊏-transitive : e ⊏ e′ → e′ ⊏ e″ → e ⊏ e″
+⊏-transitive = trans
 
-≺-asymmetric : e ≺ e′ → ¬ e′ ≺ e
-≺-asymmetric x y = ⊥-elim (≺-irreflexive (≺-transitive x y))
+⊏-asymmetric : e ⊏ e′ → ¬ e′ ⊏ e
+⊏-asymmetric x y = ⊥-elim (⊏-irreflexive (⊏-transitive x y))
 
-≺-antisymmetric : e ≺ e′ → e′ ≺ e → e ≡ e′
-≺-antisymmetric x y = ⊥-elim (≺-irreflexive (≺-transitive x y))
+⊏-antisymmetric : e ⊏ e′ → e′ ⊏ e → e ≡ e′
+⊏-antisymmetric x y = ⊥-elim (⊏-irreflexive (⊏-transitive x y))
 
 ------------------------------------------------------------------------
 -- `Event` can also be used as (causal) `History`.
@@ -80,17 +80,17 @@ data _⊆_ : History p → History p′ → Set where
   there₂ : e ⊆ e′ → e ⊆ recv e″ e′
   there₃ : e ⊆ e″ → e ⊆ recv e″ e′
 
-⊆→≼ : e ⊆ e′ → e ≼ e′
-⊆→≼ here       = refl
-⊆→≼ (there₁ x) with ⊆→≼ x
+⊆→⊑ : e ⊆ e′ → e ⊑ e′
+⊆→⊑ here       = refl
+⊆→⊑ (there₁ x) with ⊆→⊑ x
 ... | refl     = lift processOrder₁
 ... | lift y   = lift (trans y processOrder₁)
-⊆→≼ (there₂ x) with ⊆→≼ x
+⊆→⊑ (there₂ x) with ⊆→⊑ x
 ... | refl     = lift processOrder₂
 ... | lift y   = lift (trans y processOrder₂)
-⊆→≼ (there₃ x) with ⊆→≼ x
-... | refl     = lift send≺recv
-... | lift y   = lift (trans y send≺recv)
+⊆→⊑ (there₃ x) with ⊆→⊑ x
+... | refl     = lift send⊏recv
+... | lift y   = lift (trans y send⊏recv)
 
 ⊆-transitive : e ⊆ e′ → e′ ⊆ e″ → e ⊆ e″
 ⊆-transitive here       y          = y
@@ -107,12 +107,12 @@ data _⊆_ : History p → History p′ → Set where
 ⊆-transitive (there₃ x) (there₂ y) = there₂ (⊆-transitive x (⊆-transitive (there₃ here) y))
 ⊆-transitive (there₃ x) (there₃ y) = there₃ (⊆-transitive x (⊆-transitive (there₃ here) y))
 
-≼→⊆ : e ≼ e′ → e ⊆ e′
-≼→⊆ refl     = here
-≼→⊆ (lift x) = ≺→⊆ x
+⊑→⊆ : e ⊑ e′ → e ⊆ e′
+⊑→⊆ refl     = here
+⊑→⊆ (lift x) = ⊏→⊆ x
   where
-  ≺→⊆ : e ≺ e′ → e ⊆ e′
-  ≺→⊆ processOrder₁ = there₁ here
-  ≺→⊆ processOrder₂ = there₂ here
-  ≺→⊆ send≺recv     = there₃ here
-  ≺→⊆ (trans x y)   = ⊆-transitive (≺→⊆ x) (≺→⊆ y)
+  ⊏→⊆ : e ⊏ e′ → e ⊆ e′
+  ⊏→⊆ processOrder₁ = there₁ here
+  ⊏→⊆ processOrder₂ = there₂ here
+  ⊏→⊆ send⊏recv     = there₃ here
+  ⊏→⊆ (trans x y)   = ⊆-transitive (⊏→⊆ x) (⊏→⊆ y)
