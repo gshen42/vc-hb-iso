@@ -8,7 +8,7 @@
 
 open import Data.Nat as ℕ
 
-module Event (n : ℕ) where
+module Event (n : ℕ) (Msg : Set)  where
 
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Fin using (Fin)
@@ -21,10 +21,11 @@ Pid = Fin n
 private
   variable
     p p′ p″ : Pid
+    m       : Msg
 
 data Event : Pid → Set where
   init : Event p
-  send : Event p  → Event p
+  send : Msg → Event p → Event p
   recv : Event p′ → Event p → Event p
 
 private
@@ -34,7 +35,7 @@ private
     e″ : Event p″
 
 data _⊏_ : Event p → Event p′ → Set where
-  processOrder₁ : e ⊏ send e
+  processOrder₁ : e ⊏ send m e
   processOrder₂ : e ⊏ recv e′ e
   send⊏recv     : e ⊏ recv e  e′
   trans         : e ⊏ e′ → e′ ⊏ e″ → e ⊏ e″
@@ -48,7 +49,7 @@ data _⊑_ : Event p → Event p′ → Set where
 
 size : Event p → ℕ
 size init        = zero
-size (send e)    = suc (size e)
+size (send _ e)  = suc (size e)
 size (recv e e′) = suc (size e + size e′)
 
 ⊏-monotonic : e ⊏ e′ → size e < size e′
@@ -76,7 +77,7 @@ History = Event
 
 data _⊆_ : History p → History p′ → Set where
   here   : e ⊆ e
-  there₁ : e ⊆ e′ → e ⊆ send e′
+  there₁ : e ⊆ e′ → e ⊆ send m e′
   there₂ : e ⊆ e′ → e ⊆ recv e″ e′
   there₃ : e ⊆ e″ → e ⊆ recv e″ e′
 

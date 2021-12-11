@@ -4,7 +4,7 @@
 
 open import Data.Nat using (ℕ)
 
-module Execution (n : ℕ) where
+module Execution (n : ℕ) (Msg : Set) where
 
 open import Data.Fin using (Fin; _≟_)
 open import Data.List using (List)
@@ -12,7 +12,7 @@ open import Data.List.NonEmpty using (List⁺; _∷_; head; tail; [_]; _∷⁺_;
 open import Data.List.Membership.Propositional renaming (_∈_ to _∈′_)
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.Product using (∃; _,_; ∃-syntax; -,_)
-open import Event n
+open import Event n Msg
 open import Function using (_∘_)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_)
@@ -39,11 +39,11 @@ _∈_ : ∀ {A : Set} → A → List⁺ A → Set
 x ∈ xs = x ∈′ (toList xs)
 
 data _—⟶_ : State → State → Set where
-  send : ∀ {s} p →
-         s —⟶ update s p send
+  send : ∀ {s} p m →
+         s —⟶ update s p (send m)
   recv : ∀ {s} p p′ e →
          p ≢ p′ →
-         ∃[ e′ ] e ≡ send e′ →
+         ∃[ e′ ] ∃[ m ] e ≡ send m e′ →
          e ∈ s p′ →
          s —⟶ update s p (recv e)
 
@@ -80,21 +80,21 @@ induction⁺ P Q Q₀ Qstep Q→P = (Q→P _) ∘ induction Q Q₀ Qstep
 wf-recv : ∀ {s} → reachable s →
           ∀ p p′ (e : Event p) (e′ : Event p′) →
           recv e′ e ∈ s p →
-          ∃[ e″ ] e′ ≡ send e″
+          ∃[ e″ ] ∃[ m ] e′ ≡ send m e″
 wf-recv = induction P P₀ Pstep
   where
   P : State → Set
-  P s = ∀ p p′ e e′ → recv e′ e ∈ s p → ∃[ e″ ] e′ ≡ send e″
+  P s = ∀ p p′ e e′ → recv e′ e ∈ s p → ∃[ e″ ] ∃[ m ] e′ ≡ send m e″
 
   P₀ : P s₀
   P₀ p p′ e e′ (here ())
   P₀ p p′ e e′ (there ())
 
   Pstep : ∀ s s′ → P s → s —⟶ s′ → P s′
-  Pstep _ _ Ps (send p) p′ _ _ _ a         with p ≟ p′
-  Pstep _ _ Ps (send p) p′ _ _ _ (here ()) | yes _
-  Pstep _ _ Ps (send p) p′ _ _ _ (there a) | yes _ = Ps _ _ _ _ a
-  Pstep _ _ Ps (send p) p′ _ _ _ a         | no  _ = Ps _ _ _ _ a
+  Pstep _ _ Ps (send p _) p′ _ _ _ a         with p ≟ p′
+  Pstep _ _ Ps (send p _) p′ _ _ _ (here ()) | yes _
+  Pstep _ _ Ps (send p _) p′ _ _ _ (there a) | yes _ = Ps _ _ _ _ a
+  Pstep _ _ Ps (send p _) p′ _ _ _ a         | no  _ = Ps _ _ _ _ a
   Pstep _ _ Ps (recv p _ _ _ _ _) p′ _ _ _ a           with p ≟ p′
   Pstep _ _ Ps (recv p _ _ _ t _) p′ _ _ _ (here refl) | yes _ = t
   Pstep _ _ Ps (recv p _ _ _ _ _) p′ _ _ _ (there a)   | yes _ = Ps _ _ _ _ a
