@@ -14,8 +14,8 @@ open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.Product using (∃; _,_; ∃-syntax; -,_)
 open import Event n Msg
 open import Function using (_∘_)
-open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_)
+open import Relation.Nullary using (yes; no)
 
 -- The state of a process is a non-empty list of events that happened on
 -- it in order from most recent to oldest.
@@ -58,23 +58,15 @@ reachable = s₀ —⟶*_
 -- Induction principle for reachable states.
 induction : ∀ (P : State → Set) →
             P s₀ →
-            (∀ s s′ → P s → s —⟶ s′ → P s′) →
+            (∀ s s′ → reachable s → P s → s —⟶ s′ → P s′) →
             ∀ {s} → reachable s → P s
-induction P P₀ Pstep x = Pstep→Psteps Pstep _ _ P₀ x
+induction P P₀ Pstep r = Pstep→Psteps Pstep _ _ refl P₀ r
   where
-  Pstep→Psteps : (∀ s s′ → P s → s —⟶  s′ → P s′) →
-                 ∀ s s′ → P s → s —⟶* s′ → P s′
-  Pstep→Psteps Pstep _ _ Ps (lift a)   = Pstep _ _ Ps a
-  Pstep→Psteps Pstep _ _ Ps refl       = Ps
-  Pstep→Psteps Pstep _ _ Ps (tran a b) = Pstep→Psteps Pstep _ _ (Pstep→Psteps Pstep _ _ Ps a) b
-
--- Induction principle for reachable states with a generalized induction hypothesis.
-induction⁺ : ∀ (P Q : State → Set) →
-            Q s₀ →
-            (∀ s s′ → Q s → s —⟶ s′ → Q s′) →
-            (∀ s → Q s → P s) →
-            ∀ {s} → reachable s → P s
-induction⁺ P Q Q₀ Qstep Q→P = (Q→P _) ∘ induction Q Q₀ Qstep
+  Pstep→Psteps : (∀ s s′ → reachable s → P s → s —⟶  s′ → P s′) →
+                 ∀ s s′ → reachable s → P s → s —⟶* s′ → P s′
+  Pstep→Psteps Pstep _ _ r Ps (lift a)   = Pstep _ _ r Ps a
+  Pstep→Psteps Pstep _ _ r Ps refl       = Ps
+  Pstep→Psteps Pstep _ _ r Ps (tran a b) = Pstep→Psteps Pstep _ _ (tran r a) (Pstep→Psteps Pstep _ _ r Ps a) b
 
 -- Receives are well-formed, i.e., the last event of the sending process is a send event.
 wf-recv : ∀ {s} → reachable s →
@@ -90,12 +82,12 @@ wf-recv = induction P P₀ Pstep
   P₀ p p′ e e′ (here ())
   P₀ p p′ e e′ (there ())
 
-  Pstep : ∀ s s′ → P s → s —⟶ s′ → P s′
-  Pstep _ _ Ps (send p _) p′ _ _ _ a         with p ≟ p′
-  Pstep _ _ Ps (send p _) p′ _ _ _ (here ()) | yes _
-  Pstep _ _ Ps (send p _) p′ _ _ _ (there a) | yes _ = Ps _ _ _ _ a
-  Pstep _ _ Ps (send p _) p′ _ _ _ a         | no  _ = Ps _ _ _ _ a
-  Pstep _ _ Ps (recv p _ _ _ _ _) p′ _ _ _ a           with p ≟ p′
-  Pstep _ _ Ps (recv p _ _ _ t _) p′ _ _ _ (here refl) | yes _ = t
-  Pstep _ _ Ps (recv p _ _ _ _ _) p′ _ _ _ (there a)   | yes _ = Ps _ _ _ _ a
-  Pstep _ _ Ps (recv p _ _ _ _ _) p′ _ _ _ a           | no  _ = Ps _ _ _ _ a
+  Pstep : ∀ s s′ → reachable s → P s → s —⟶ s′ → P s′
+  Pstep _ _ _ Ps (send p _) p′ _ _ _ a         with p ≟ p′
+  Pstep _ _ _ Ps (send p _) p′ _ _ _ (here ()) | yes _
+  Pstep _ _ _ Ps (send p _) p′ _ _ _ (there a) | yes _ = Ps _ _ _ _ a
+  Pstep _ _ _ Ps (send p _) p′ _ _ _ a         | no  _ = Ps _ _ _ _ a
+  Pstep _ _ _ Ps (recv p _ _ _ _ _) p′ _ _ _ a           with p ≟ p′
+  Pstep _ _ _ Ps (recv p _ _ _ t _) p′ _ _ _ (here refl) | yes _ = t
+  Pstep _ _ _ Ps (recv p _ _ _ _ _) p′ _ _ _ (there a)   | yes _ = Ps _ _ _ _ a
+  Pstep _ _ _ Ps (recv p _ _ _ _ _) p′ _ _ _ a           | no  _ = Ps _ _ _ _ a
