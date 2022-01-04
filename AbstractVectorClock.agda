@@ -6,13 +6,16 @@
 
 open import Data.Nat using (ℕ)
 
-module AbstractVectorClock (n : ℕ) where
+module AbstractVectorClock (n : ℕ) (Msg : Set) where
 
-open import Data.Fin using (Fin)
-open import Data.Product using (_×_; _,_)
-open import Event n
-open import Execution n
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
+open import Data.Fin using (_≟_)
+open import Data.List.Relation.Unary.Any using (Any; here; there)
+open import Data.Maybe using (nothing)
+open import Data.Product using (_×_; proj₁; proj₂)
+open import Event n Msg
+open import Execution n Msg
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Nullary using (yes; no)
 
 private
   variable
@@ -33,42 +36,27 @@ data _<_ : VC p → VC p′ → Set where
   vc<tick[vc]      : vc < tick vc
   vc<merge[vc,vc′] : vc < merge vc  vc′
   vc<merge[vc′,vc] : vc < merge vc′ vc
-  transitive       : vc < vc′ → vc′ < vc″ → vc < vc″
+  trans            : vc < vc′ → vc′ < vc″ → vc < vc″
 
 vc[_] : Event p → VC p
 vc[ init ]      = init
-vc[ send e ]    = tick vc[ e ]
+vc[ send _ e ]  = tick vc[ e ]
 vc[ recv e′ e ] = merge vc[ e′ ] vc[ e ]
 
-event[_] : VC p → Event p
-event[ init ]         = init
-event[ tick vc ]      = send event[ vc ]
-event[ merge vc′ vc ] = recv event[ vc′ ] event[ vc ]
+-- event[_] : VC p → Event p
+-- event[ init ]      = init
+-- event[ tick x ]    = send event[ x ]
+-- event[ merge x y ] = recv event[ x ] event[ y ]
 
-private
-  variable
-    e   : Event p
-    e′  : Event p′
-
-<↔≺ : (e ≺ e′ → vc[ e ] < vc[ e′ ]) × (vc[ e ] < vc[ e′ ] → e ≺ e′)
-<↔≺ = ≺→< , <→≺
+⊏↔< : ∀ {s} → reachable s →
+      ∀ p p′ e e′ → e ∈ (s p) → e′ ∈ (s p′) →
+      (e ⊏ e′ → vc[ e ] < vc[ e′ ]) × (vc[ e ] < vc[ e′ ] → e ⊏ e′)
+proj₁ (⊏↔< _ _ _ _ _ _ _) = ⊏→<
   where
-  event∘vc : ∀ (e : Event p) → event[ vc[ e ] ] ≡ e
-  event∘vc init = refl
-  event∘vc (send e) rewrite event∘vc e = refl
-  event∘vc (recv e′ e) rewrite event∘vc e | event∘vc e′ = refl
-
-  ≺→< : e ≺ e′ → vc[ e ] < vc[ e′ ]
-  ≺→< processOrder₁ = vc<tick[vc]
-  ≺→< processOrder₂ = vc<merge[vc′,vc]
-  ≺→< send≺recv     = vc<merge[vc,vc′]
-  ≺→< (trans x y)   = transitive (≺→< x) (≺→< y)
-
-  foo : vc < vc′ → event[ vc ] ≺ event[ vc′ ]
-  foo vc<tick[vc]      = processOrder₁
-  foo vc<merge[vc,vc′] = send≺recv
-  foo vc<merge[vc′,vc] = processOrder₂
-  foo (transitive x y) = trans (foo x) (foo y)
-
-  <→≺ : vc[ e ] < vc[ e′ ] → e ≺ e′
-  <→≺ {e = e} {e′ = e′} x = subst (_≺ e′) (event∘vc e) (subst (event[ vc[ e ] ] ≺_) (event∘vc e′) (foo x))
+  ⊏→< : ∀ {p p′} {e : Event p} {e′ : Event p′}
+        → e ⊏ e′ → vc[ e ] < vc[ e′ ]
+  ⊏→< processOrder₁ = vc<tick[vc]
+  ⊏→< processOrder₂ = vc<merge[vc′,vc]
+  ⊏→< send⊏recv     = vc<merge[vc,vc′]
+  ⊏→< (trans x y)   = trans (⊏→< x) ((⊏→< y))
+proj₂ (⊏↔< a _ _ _ _ b c) = {!!}

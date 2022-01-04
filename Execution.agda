@@ -48,9 +48,9 @@ data _—⟶_ : State → State → Set where
          s —⟶ update s p (recv e)
 
 data _—⟶*_ : State → State → Set where
-  lift : ∀ {s s′} → s —⟶ s′ → s —⟶* s′
-  refl : ∀ {s} → s —⟶* s
-  tran : ∀ {s s′ s″} → s —⟶* s′ → s′ —⟶* s″ → s —⟶* s″
+  lift  : ∀ {s s′} → s —⟶ s′ → s —⟶* s′
+  refl  : ∀ {s} → s —⟶* s
+  trans : ∀ {s s′ s″} → s —⟶* s′ → s′ —⟶* s″ → s —⟶* s″
 
 reachable : State → Set
 reachable = s₀ —⟶*_
@@ -64,9 +64,9 @@ induction P P₀ Pstep r = Pstep→Psteps Pstep _ _ refl P₀ r
   where
   Pstep→Psteps : (∀ s s′ → reachable s → P s → s —⟶  s′ → P s′) →
                  ∀ s s′ → reachable s → P s → s —⟶* s′ → P s′
-  Pstep→Psteps Pstep _ _ r Ps (lift a)   = Pstep _ _ r Ps a
-  Pstep→Psteps Pstep _ _ r Ps refl       = Ps
-  Pstep→Psteps Pstep _ _ r Ps (tran a b) = Pstep→Psteps Pstep _ _ (tran r a) (Pstep→Psteps Pstep _ _ r Ps a) b
+  Pstep→Psteps Pstep _ _ r Ps (lift a)    = Pstep _ _ r Ps a
+  Pstep→Psteps Pstep _ _ r Ps refl        = Ps
+  Pstep→Psteps Pstep _ _ r Ps (trans a b) = Pstep→Psteps Pstep _ _ (trans r a) (Pstep→Psteps Pstep _ _ r Ps a) b
 
 -- Receives are well-formed, i.e., the last event of the sending process is a send event.
 wf-recv : ∀ {s} → reachable s →

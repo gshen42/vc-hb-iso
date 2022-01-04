@@ -1,4 +1,4 @@
-------------------------------------------------------------------------
+ ------------------------------------------------------------------------
 -- Defines `Event` and happens-before relation `_⊏_`, proves `_⊏_` is a
 -- strict partial order.
 --
@@ -6,13 +6,13 @@
 -- `_⊆_` is isomorphic to `_⊑_` (the reflexive closure of `_⊏_`).
 ------------------------------------------------------------------------
 
-open import Data.Nat as ℕ
+open import Data.Nat
 
-module Event (n : ℕ) (Msg : Set)  where
+module Event (n : ℕ) (Msg : Set) where
 
-open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Fin using (Fin)
-open import Data.Nat.Properties as ℕₚ
+open import Data.Maybe using (Maybe)
+open import Data.Nat.Properties
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (¬_)
 
@@ -25,7 +25,7 @@ private
 
 data Event : Pid → Set where
   init : Event p
-  send : Msg → Event p → Event p
+  send : Msg      → Event p → Event p
   recv : Event p′ → Event p → Event p
 
 private
@@ -41,8 +41,8 @@ data _⊏_ : Event p → Event p′ → Set where
   trans         : e ⊏ e′ → e′ ⊏ e″ → e ⊏ e″
 
 data _⊑_ : Event p → Event p′ → Set where
-  refl : e ⊑ e
   lift : e ⊏ e′ → e ⊑ e′
+  refl : e ⊑ e
 
 ------------------------------------------------------------------------
 -- `_⊏_` is a strict partial order.
@@ -65,10 +65,10 @@ size (recv e e′) = suc (size e + size e′)
 ⊏-transitive = trans
 
 ⊏-asymmetric : e ⊏ e′ → ¬ e′ ⊏ e
-⊏-asymmetric x y = ⊥-elim (⊏-irreflexive (⊏-transitive x y))
+⊏-asymmetric x y with () ← ⊏-irreflexive (⊏-transitive x y)
 
 ⊏-antisymmetric : e ⊏ e′ → e′ ⊏ e → e ≡ e′
-⊏-antisymmetric x y = ⊥-elim (⊏-irreflexive (⊏-transitive x y))
+⊏-antisymmetric x y with () ← ⊏-irreflexive (⊏-transitive x y)
 
 ------------------------------------------------------------------------
 -- `Event` can also be used as (causal) `History`.
