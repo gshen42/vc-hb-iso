@@ -12,6 +12,7 @@ open import Data.List.NonEmpty using (List⁺; _∷_; head; tail; [_]; _∷⁺_;
 open import Data.List.Membership.Propositional renaming (_∈_ to _∈′_)
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.Product using (∃; _,_; ∃-syntax; -,_)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Event n Msg
 open import Function using (_∘_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_)
@@ -91,3 +92,63 @@ wf-recv = induction P P₀ Pstep
   Pstep _ _ _ Ps (recv p _ _ _ t _) p′ _ _ _ (here refl) | yes _ = t
   Pstep _ _ _ Ps (recv p _ _ _ _ _) p′ _ _ _ (there a)   | yes _ = Ps _ _ _ _ a
   Pstep _ _ _ Ps (recv p _ _ _ _ _) p′ _ _ _ a           | no  _ = Ps _ _ _ _ a
+
+e⊏head⊎e≡head : ∀ {s} → reachable s →
+                ∀ p e → e ∈ (s p) →
+                e ⊏ head (s p) ⊎ e ≡ head (s p)
+e⊏head⊎e≡head = induction P P₀ Pstep
+  where
+  P : State → Set
+  P s = ∀ p e → e ∈ (s p) →
+        e ⊏ head (s p) ⊎ e ≡ head (s p)
+
+  P₀ : P s₀
+  P₀ _ _ (here refl) = inj₂ refl
+
+  Pstep : ∀ s s′ → reachable s → P s → s —⟶ s′ → P s′
+  Pstep _ _ _ Ps (send p _) q _ _           with p ≟ q
+  Pstep _ _ _ Ps (send p _) q _ (here refl) | yes _ = inj₂ refl
+  Pstep _ _ _ Ps (send p _) q _ (there x)   | yes _ with Ps _ _ x
+  ...                                               | inj₁ a    = inj₁ (trans a processOrder₁)
+  ...                                               | inj₂ refl = inj₁ processOrder₁
+  Pstep _ _ _ Ps (send p _) q _ x           | no  _ = Ps _ _ x
+  Pstep _ _ _ Ps (recv p _ _ _ _ _) q _ _           with p ≟ q
+  Pstep _ _ _ Ps (recv p _ _ _ _ _) q _ (here refl) | yes _ = inj₂ refl
+  Pstep _ _ _ Ps (recv p _ _ _ _ _) q _ (there x)   | yes _ with Ps _ _ x
+  ...                                                       | inj₁ a    = inj₁ (trans a processOrder₂)
+  ...                                                       | inj₂ refl = inj₁ processOrder₂
+  Pstep _ _ _ Ps (recv p _ _ _ _ _) q _ x           | no  _ = Ps _ _ x
+
+strictTotalOrder : ∀ {s} → reachable s →
+                   ∀ p e e′ → e ∈ (s p) → e′ ∈ (s p) →
+                   e ⊏ e′ ⊎ e′ ⊏ e ⊎ e ≡ e′
+strictTotalOrder = induction P P₀ Pstep
+  where
+  P : State → Set
+  P s = ∀ p e e′ → e ∈ (s p) → e′ ∈ (s p) →
+        e ⊏ e′ ⊎ e′ ⊏ e ⊎ e ≡ e′
+
+  P₀ : P s₀
+  P₀ _ _ _ (here refl) (here refl) = inj₂ (inj₂ refl)
+
+  Pstep : ∀ s s′ → reachable s → P s → s —⟶ s′ → P s′
+  Pstep _ _ _ Ps (send p _) p′ _ _ _           _           with p ≟ p′
+  Pstep _ _ _ Ps (send p _) p′ _ _ (here refl) (here refl) | yes _ = inj₂ (inj₂ refl)
+  Pstep _ _ r Ps (send p _) p′ _ _ (here refl) (there y)   | yes _ with e⊏head⊎e≡head r _ _ y
+  ...                                                              | inj₁ a    = inj₂ (inj₁ (trans a processOrder₁))
+  ...                                                              | inj₂ refl = inj₂ (inj₁ processOrder₁)
+  Pstep _ _ r Ps (send p _) p′ _ _ (there x)   (here refl) | yes _ with e⊏head⊎e≡head r _ _ x
+  ...                                                              | inj₁ a    = inj₁ (trans a processOrder₁)
+  ...                                                              | inj₂ refl = inj₁ processOrder₁
+  Pstep _ _ _ Ps (send p _) p′ _ _ (there x)   (there y)   | yes _ = Ps _ _ _ x y
+  Pstep _ _ _ Ps (send p _) p′ _ _ x           y           | no  _ = Ps _ _ _ x y
+  Pstep _ _ _ Ps (recv p _ _ _ _ _) p′ _ _ _           _           with p ≟ p′
+  Pstep _ _ _ Ps (recv p _ _ _ _ _) p′ _ _ (here refl) (here refl) | yes _ = inj₂ (inj₂ refl)
+  Pstep _ _ r Ps (recv p _ _ _ _ _) p′ _ _ (here refl) (there y)   | yes _ with e⊏head⊎e≡head r _ _ y
+  ...                                                                      | inj₁ a    = inj₂ (inj₁ (trans a processOrder₂))
+  ...                                                                      | inj₂ refl = inj₂ (inj₁ processOrder₂)
+  Pstep _ _ r Ps (recv p _ _ _ _ _) p′ _ _ (there x)   (here refl) | yes _ with e⊏head⊎e≡head r _ _ x
+  ...                                                                      | inj₁ a    = inj₁ (trans a processOrder₂)
+  ...                                                                      | inj₂ refl = inj₁ processOrder₂
+  Pstep _ _ _ Ps (recv p _ _ _ _ _) p′ _ _ (there x)   (there y)   | yes _ = Ps _ _ _ x y
+  Pstep _ _ _ Ps (recv p _ _ _ _ _) p′ _ _ x           y           | no  _ = Ps _ _ _ x y
