@@ -11,7 +11,6 @@ open import Data.Nat
 module Event (n : ℕ) (Msg : Set) where
 
 open import Data.Fin using (Fin)
-open import Data.Maybe using (Maybe)
 open import Data.Nat.Properties
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (¬_)
@@ -52,23 +51,23 @@ size init        = zero
 size (send _ e)  = suc (size e)
 size (recv e e′) = suc (size e + size e′)
 
-⊏-monotonic : e ⊏ e′ → size e < size e′
-⊏-monotonic processOrder₁ = s≤s ≤-refl
-⊏-monotonic processOrder₂ = s≤s (≤-stepsˡ _ ≤-refl)
-⊏-monotonic send⊏recv     = s≤s (≤-stepsʳ _ ≤-refl)
-⊏-monotonic (trans x y)   = ≤-trans (⊏-monotonic x) (<⇒≤ (⊏-monotonic y))
+⊏-mono : e ⊏ e′ → size e < size e′
+⊏-mono processOrder₁ = s≤s ≤-refl
+⊏-mono processOrder₂ = s≤s (≤-stepsˡ _ ≤-refl)
+⊏-mono send⊏recv     = s≤s (≤-stepsʳ _ ≤-refl)
+⊏-mono (trans x y)   = ≤-trans (⊏-mono x) (<⇒≤ (⊏-mono y))
 
-⊏-irreflexive : ¬ e ⊏ e
-⊏-irreflexive x = 1+n≰n (⊏-monotonic x)
+⊏-irrefl : ¬ e ⊏ e
+⊏-irrefl x = 1+n≰n (⊏-mono x)
 
-⊏-transitive : e ⊏ e′ → e′ ⊏ e″ → e ⊏ e″
-⊏-transitive = trans
+⊏-trans : e ⊏ e′ → e′ ⊏ e″ → e ⊏ e″
+⊏-trans = trans
 
-⊏-asymmetric : e ⊏ e′ → ¬ e′ ⊏ e
-⊏-asymmetric x y with () ← ⊏-irreflexive (⊏-transitive x y)
+⊏-asym : e ⊏ e′ → ¬ e′ ⊏ e
+⊏-asym x y with () ← ⊏-irrefl (⊏-trans x y)
 
-⊏-antisymmetric : e ⊏ e′ → e′ ⊏ e → e ≡ e′
-⊏-antisymmetric x y with () ← ⊏-irreflexive (⊏-transitive x y)
+⊏-antisym : e ⊏ e′ → e′ ⊏ e → e ≡ e′
+⊏-antisym x y with () ← ⊏-irrefl (⊏-trans x y)
 
 ------------------------------------------------------------------------
 -- `Event` can also be used as (causal) `History`.

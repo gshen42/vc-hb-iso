@@ -8,14 +8,8 @@ open import Data.Nat using (ℕ)
 
 module AbstractVectorClock (n : ℕ) (Msg : Set) where
 
-open import Data.Fin using (_≟_)
-open import Data.List.Relation.Unary.Any using (Any; here; there)
-open import Data.Maybe using (nothing)
-open import Data.Product using (_×_; proj₁; proj₂)
 open import Event n Msg
 open import Execution n Msg
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Relation.Nullary using (yes; no)
 
 private
   variable
@@ -43,20 +37,17 @@ vc[ init ]      = init
 vc[ send _ e ]  = tick vc[ e ]
 vc[ recv e′ e ] = merge vc[ e′ ] vc[ e ]
 
--- event[_] : VC p → Event p
--- event[ init ]      = init
--- event[ tick x ]    = send event[ x ]
--- event[ merge x y ] = recv event[ x ] event[ y ]
-
-⊏↔< : ∀ {s} → reachable s →
+⊏→< : ∀ {s} → reachable s →
       ∀ p p′ e e′ → e ∈ (s p) → e′ ∈ (s p′) →
-      (e ⊏ e′ → vc[ e ] < vc[ e′ ]) × (vc[ e ] < vc[ e′ ] → e ⊏ e′)
-proj₁ (⊏↔< _ _ _ _ _ _ _) = ⊏→<
+      e ⊏ e′ → vc[ e ] < vc[ e′ ]
+⊏→< _ _ _ _ _ _ _ = foo
   where
-  ⊏→< : ∀ {p p′} {e : Event p} {e′ : Event p′}
-        → e ⊏ e′ → vc[ e ] < vc[ e′ ]
-  ⊏→< processOrder₁ = vc<tick[vc]
-  ⊏→< processOrder₂ = vc<merge[vc′,vc]
-  ⊏→< send⊏recv     = vc<merge[vc,vc′]
-  ⊏→< (trans x y)   = trans (⊏→< x) ((⊏→< y))
-proj₂ (⊏↔< a _ _ _ _ b c) = {!!}
+  foo : ∀ {e : Event p} {e′ : Event p′} → e ⊏ e′ → vc[ e ] < vc[ e′ ]
+  foo processOrder₁ = vc<tick[vc]
+  foo processOrder₂ = vc<merge[vc′,vc]
+  foo send⊏recv     = vc<merge[vc,vc′]
+  foo (trans x y)   = trans (foo x) (foo y)
+
+<→⊏ : ∀ {s} → reachable s →
+      ∀ p p′ e e′ → e ∈ (s p) → e′ ∈ (s p′) →
+      vc[ e ] < vc[ e′ ] → e ⊏ e′
