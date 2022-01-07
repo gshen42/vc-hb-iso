@@ -152,3 +152,10 @@ strictTotalOrder = induction P P₀ Pstep
   ...                                                                | inj₂ refl = inj₁ processOrder₂
   Pstep _ Ps (recv p _ _ _ _) p′ _ _ (there x)   (there y)   | yes _ = Ps _ _ _ x y
   Pstep _ Ps (recv p _ _ _ _) p′ _ _ x           y           | no  _ = Ps _ _ _ x y
+
+causal-delivery : State → Set
+causal-delivery s = ∀ p₁ p₂ p (e₁ : Event p₁) (e₂ : Event p₂) e₁′ e₂′ →
+                    recv e₁ e₁′ ∈ (s p) →
+                    recv e₂ e₂′ ∈ (s p) →
+                    e₁ ⊏ e₂ →
+                    recv e₁ e₁′ ⊏ recv e₂ e₂′
